@@ -1,0 +1,6 @@
+to test-produce-rate
+  let input (sentence get-normalized-coordinates get-normalized-inventory get-normalized-needs get-normalized-season (count turtles-on patch-here))
+  
+  let output softmax (neural-activity 0 input)
+  show output
+end

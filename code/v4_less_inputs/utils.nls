@@ -1,0 +1,587 @@
+to-report child-color [parent1 parent2]
+  let c1 extract-rgb ([family-color] of parent1)
+  let c2 extract-rgb ([family-color] of parent2)
+
+  let new-color (map [ [x y] -> (x + y) / 2] c1 c2)
+  report approximate-rgb (item 0 new-color) (item 1 new-color) (item 2 new-color)
+end
+
+
+
+to load-checkpoint [name]
+  import-world word "model_checkpoints/" name  ;; Load the world from the saved file
+end
+
+to save-checkpoint [name]
+  export-world word "model_checkpoints/" name  ;; Save the world to a file named "checkpoint.sav"
+end
+to read-files
+  set season-efficiency-table csv:from-file "data/season-efficiency.csv"
+  set max-product item 0 csv:from-file "data/max-product.csv"
+  set good_table csv:from-file "data/good.csv"
+  set good_table (map [ [a] -> map [ [b] -> b * nutrition-multiplyer ] a] good_table)
+  set need_table item 0 csv:from-file "data/need.csv"
+  
+
+end
+
+to-report round-digits [number]
+  report (map [[a] -> precision a 0] number)
+  
+end
+
+to show-production [agentset sh]
+  let max-prod [0.00001 0.00001 0.00001]
+  let total-prod [0 0 0]
+  
+  foreach sort agentset[ per ->
+    set max-prod (map [[a b] -> max (list a b)] max-prod ([net-produce] of per))
+    set total-prod (map + total-prod [net-produce] of per)
+  ]
+  output-show word "Maximum production : " (round-digits max-prod)
+  ask agentset[
+    set color (map [[a b] -> 255 * (a / b) ^ color-coeff] net-produce max-prod)
+    set size 0.5 + 1 * sum (map [[a b] -> (a / b) ^ color-coeff] net-produce max-prod)
+    set shape sh
+  ]
+  output-show word "In RGB - shape : " sh
+  output-show (word "Sh : " sh " | GDP : " round-digits total-prod)
+end
+
+to show-consumption [agentset sh]
+  let max-consume [0.00001 0.00001 0.00001]
+  let total-consump [0 0 0]
+  foreach sort agentset[ per ->
+    set max-consume (map [[a b] -> max (list a b)] max-consume ([net-consume] of per))
+    set total-consump (map + total-consump [net-consume] of per)
+  ]
+  output-show word "Maximum consumption : " (round-digits max-consume)
+  ask agentset[
+    set color (map [[a b] -> 255 * (a / b) ^ color-coeff] net-consume max-consume)
+    set size 0.5 + 1 * sum (map [[a b] -> (a / b) ^ color-coeff] net-consume max-consume)
+    set shape sh
+  ]
+  output-show word "In RGB - shape : " sh
+  output-show (word "Sh : " sh " | GDP : " round-digits total-consump)
+end
+
+to show-inventory [agentset sh]
+  let max-inv [0.00001 0.00001 0.00001]
+  let gdp [0 0 0]
+  foreach sort agentset[ per ->
+    set max-inv (map [[a b] -> max (list a b)] max-inv ([inventory] of per))
+    set gdp (map + gdp [inventory] of per)
+  ]
+  
+  ask agentset[
+    set color (map [[a b] -> 255 *  (a / b) ^ color-coeff ] inventory max-inv)
+    set size 0.5 + 1 * mean (map [[a b] ->  (a / b) ^ color-coeff] inventory max-inv)
+    set shape sh
+  ] 
+  
+  output-show word "Maximum inventory : " (round-digits max-inv)
+  output-show (word "Sh : " sh " | GDP : " round-digits gdp)
+end
+
+to show-net-trade [agentset sh]
+  let max-trade [0.00001 0.00001 0.00001]
+  let max-trade-volume [0.00001 0.00001 0.00001]
+  foreach sort agentset[per ->
+    set max-trade (map [[a b] -> max (list abs a abs b)] max-trade ([net-trade] of per))
+    set max-trade-volume (map [[a b] -> max (list abs a abs b)] max-trade-volume ([net-trade-volume] of per))
+  ]
+  
+    ask agentset[
+      
+      set color (map [[a b] -> 255 * ((max list a 0) / b) ^ color-coeff] net-trade max-trade)
+      set size 0.5 + 1 * (sum map abs net-trade-volume / sum max-trade-volume) ^ color-coeff
+    set shape sh
+    ]
+    
+  output-show (word "In RGB, where 125 means 0 net trade. And - + is scaled from 0-125-255 - shape : " sh)
+  output-show word "Net trade / Trade volume : " (round-digits max-trade-volume)
+end
+
+to show-trade-volume [agentset sh]
+  let max-trade [0.00001 0.00001 0.00001]
+  let max-trade-volume [0.00001 0.00001 0.00001]
+  foreach sort agentset[per ->
+    set max-trade (map [[a b] -> max (list abs a abs b)] max-trade ([net-trade] of per))
+    set max-trade-volume (map [[a b] -> max (list  a b)] max-trade-volume ([net-trade-volume] of per))
+  ]
+  
+  ask agentset[
+    set color (map [[a b] ->  (255 * (abs a / b)) ^ color-coeff] net-trade-volume max-trade-volume)
+    set size 0.5 + 1 * (sum net-trade-volume / sum max-trade-volume) ^ color-coeff
+    set shape sh
+  ]
+  output-show word "In RGB - shape : - shape : " sh
+  output-show word "Trade volume  : " (round-digits max-trade-volume)
+end
+
+to show-traded-item [agentset sh]
+  let max-trade [0.00001 0.00001 0.00001]
+  let max-trade-volume [0.00001 0.00001 0.00001]
+  let total-trade-volume [0 0 0]
+  foreach sort agentset[per ->
+    set max-trade (map [[a b] -> max (list abs a abs b)] max-trade ([net-trade] of per))
+    set max-trade-volume (map [[a b] -> max (list abs a abs b)] max-trade-volume ([net-trade-volume] of per))
+    set total-trade-volume (map [[a b] -> abs a + abs b] total-trade-volume [net-trade-volume] of per)
+  ]
+  let i 0
+  if show-item1 = "Wheat" [set i 1]
+  if show-item1 = "Meat" [set i 2]
+
+  
+  ask agentset[
+    let ta (item i net-trade) / (item i max-trade)
+    if ta > 0 [
+      set color 59.9 - (ta * 5)
+    ]
+    if ta <= 0 [
+      set color 19.9 - (ta * -5)
+    ]
+    set size 0.5 + 2 * (abs item i net-trade / item i max-trade) ^ color-coeff
+    set shape sh
+    
+  ]
+  output-show "========="
+  output-show word "Green buy, red sell - shape : " sh
+  output-show word "Max net trade" map [[a] -> precision a 1] max-trade
+  output-show word "Total trade volume" map [[a] -> precision a 1] total-trade-volume
+end
+
+to show-prices 
+  let i 0
+  let j 0
+  if show-item1 = "Wheat" [set i 1]
+  if show-item1 = "Meat" [set i 2]
+  if show-item2 = "Wheat" [set j 1]
+  if show-item2 = "Meat" [set j 2]
+  
+  ask people[
+    set size 1
+    let exc (item i prices) / (item j prices)
+    
+
+    if exc > 1[
+      set exc min (list exc 10)
+      set exc ((exc / 10) ^ color-coeff) * 9
+      set color 59.5 - (exc )
+    ]
+    if exc < 1[
+      set exc min (list (1 / exc) 10)
+      set exc ((exc / 10) ^ color-coeff) * 9 
+      set color 19.5 - (exc )
+      
+      
+    ]
+    if exc = 1[
+      set color 0 
+    ]
+    set shape "person"
+  ]
+  
+  output-show (word "Green means " show-item1 " is more expensive")
+end
+
+
+
+to k-means-weights
+  if k-means-param > 3[
+    set k-means-param 3
+  ]
+  let pops k-means
+  
+  foreach range (length pops) [ ix ->
+    let p item ix pops
+    plot-weights (turtle-set p) (word ix)
+    show-k-meansf turtle-set p ix
+  ]
+  
+end
+
+to check-switch
+  ask patches[
+    ifelse pxcor < max-pxcor * 0.33 [set pcolor scale-color yellow elevation -50 100]
+    [set pcolor scale-color green elevation -0 120]
+  ]
+  
+  let variables []
+  clear-output
+  (ifelse show-agent-color = "family"[
+    ask people[
+      set color family-color
+      set size 1
+      set shape "person"
+    ]
+    ]
+    show-agent-color = "activation"[
+      ask people[
+        set color scale-color gray (activation / 2) 0 1
+        set size 1
+        set shape "person"
+      ] 
+    ]
+    show-agent-color = "genome"[
+      let max-dist 0
+      let min-dist 10000
+      ask one-of turtles[
+        let this-genome genome
+        ask other turtles[ 
+          let dist (calculate-mean-sqr-dist this-genome genome)
+          set max-dist max list max-dist dist
+          set min-dist min list min-dist dist
+        ]
+        ask other turtles[
+          set color 9.9 * ((calculate-mean-sqr-dist this-genome genome) / max-dist) ^ color-coeff
+          set size 1
+          set shape "person"
+        ]
+        set color 35 
+        set size 2
+      ]
+      let this one-of turtles
+      
+    ]
+    show-agent-color = "satisfaction"[
+      ask people[
+        let c (map [[a b] -> 255 * (a / b) ^ color-coeff] needs max-needs)
+        set color c
+        set size 1
+        set shape "person"
+      ] 
+    ]
+    show-agent-color = "age"[
+      ask people[
+        set color 9.9 * age / max-age
+        set size 1
+        set shape "person"
+      ] 
+    ]
+    show-agent-color = "num-child"[
+      let max-child max [number-of-childeren] of people
+      ask people[
+        set color 9.9 * ((number-of-childeren) / max-child) ^ color-coeff 
+        set size 1
+        set shape "person"
+      ] 
+    ]
+    show-agent-color = "prices"[
+      show-prices 
+    ]    
+    show-agent-color = "trade-wish-buy"[
+      ask people[
+        set size 1
+        set shape "person"
+        set color (map [[a b] -> ifelse-value a > 0 [255 * ((abs a) / b) ^ color-coeff] [0]] trade-wish-plot max-inventory) 
+      ] 
+    ]
+    show-agent-color = "trade-wish-sell"[
+      ask people[
+        set size 1
+        set shape "person"
+        set color (map [[a b] -> ifelse-value a < 0 [255 * ((abs a) / b) ^ color-coeff] [0]] trade-wish-plot max-inventory) 
+      ] 
+    ]
+    show-agent-color = "charm"[
+      ask people[
+        set color scale-color green charm 0 1
+        set size 1
+        set shape "person"
+      ] 
+    ]
+    show-agent-color = "utility"[
+      ask people[
+        set color scale-color green (utility / max [utility] of people) 0 1
+        set size 1
+        set shape "person"
+      ] 
+    ]
+    show-agent-color = "reproduce?"[
+     ask people[
+        set color 0
+        if did-reproduce?[set color 9]
+        set size 1
+        set shape "person"
+      ] 
+    ]
+    [
+      (ifelse show-k-means or show-agent-color = "k-means"[
+        set variables k-means
+        ][set variables (list sort people)])
+    ]
+  )
+  
+  foreach range length variables [ix ->
+    let var item ix variables
+    let sh item ix (sentence "person" "default" "bug" "sheep" "plant" shapes)
+    (ifelse  show-agent-color = "production"[
+      show-production turtle-set var sh
+      ]
+      show-agent-color = "consumption"[
+        show-consumption (turtle-set var) sh
+      ]
+      show-agent-color = "inventory"[
+        show-inventory (turtle-set var) sh
+      ]
+      
+      show-agent-color = "net-trade"[
+        show-net-trade (turtle-set var) sh
+      ]
+      show-agent-color = "trade-volume"[
+        show-trade-volume (turtle-set var) sh
+      ]
+      show-agent-color = "traded-item"[
+        show-traded-item (turtle-set var) sh
+      ]
+      show-agent-color = "k-means"[
+        show-k-meansf turtle-set var ix
+      ] 
+      
+    )
+  ]
+  
+
+
+
+end
+
+
+to show-k-meansf [agentset ix]
+  ask agentset [
+      set color ((ix + 1) * 10 + 5) set size 1 
+      set shape "person"
+  ] 
+  
+  
+end
+
+
+to clear-plots
+  clear-all-plots
+end
+
+to plot-graphs
+  plot-weights people "0"
+  set production-per-capita (map [[a] -> a / (count turtles * 4)] production-per-capita)
+  set consume-per-capita (map [[a] -> a / (count turtles * 4)] consume-per-capita)
+  set trade-per-capita (map [[a] -> a / (count turtles * 4)] trade-per-capita)
+  set gdp-per-capita map [i -> mean (map [x -> item i x] ([inventory] of turtles))] (range 0 (length (first ([inventory] of turtles))))
+  
+  set-current-plot "production-per-capita"
+  set-current-plot-pen "Fish"
+  plot item 0 production-per-capita
+
+  set-current-plot-pen "Wheat"
+  plot item 1 production-per-capita
+
+  set-current-plot-pen "Meat"
+  plot item 2 production-per-capita
+
+  set-current-plot "consume-per-capita"
+  set-current-plot-pen "Fish"
+  plot item 0 consume-per-capita
+
+  set-current-plot-pen "Wheat"
+  plot item 1 consume-per-capita
+
+  set-current-plot-pen "Meat"
+  plot item 2 consume-per-capita
+
+  set-current-plot "gdp-per-capita"
+  set-current-plot-pen "Fish"
+  plot item 0 gdp-per-capita
+
+  set-current-plot-pen "Wheat"
+  plot item 1 gdp-per-capita
+
+  set-current-plot-pen "Meat"
+  plot item 2 gdp-per-capita
+
+  set-current-plot "trade-per-capita"
+  set-current-plot-pen "Fish"
+  plot item 0 trade-per-capita
+
+  set-current-plot-pen "Wheat"
+  plot item 1 trade-per-capita
+
+  set-current-plot-pen "Meat"
+  plot item 2 trade-per-capita
+
+  set-current-plot "population"
+  set-current-plot-pen "pop"
+  plot count turtles
+  
+  
+  let total 0
+  foreach (range 1 5)[ix ->
+    set total (total + count turtles with [mutated? = ix])
+    let name item (ix - 1) ["pr" "ex" "co" "mo"]
+    set-current-plot-pen name
+    plot total
+  ] 
+  
+
+
+  set-current-plot "death-birth"
+  set-current-plot-pen "starve"
+  plot death-by-starvation
+
+  set-current-plot-pen "age"
+  plot death-by-age
+
+  set-current-plot-pen "new"
+  plot new-borns
+  
+  
+
+  set-current-plot "num-child"
+  histogram [number-of-childeren] of people
+
+  set-current-plot "avg-death-age"
+  histogram death-age
+  
+  set-current-plot "plot-activation"
+  set-current-plot-pen "r"
+  plot count turtles with [activation = 0]
+  set-current-plot-pen "s"
+  plot count turtles with [activation = 1]
+  set-current-plot-pen "t"
+  plot count turtles with [activation = 2]
+
+end
+
+
+
+to-report calculate-mean-sqr-dist [genome1 genome2]
+  report mean (map [ [a b] -> (a - b) ^ 2] genome1 genome2)
+end
+
+to-report calculate-mean-abs-dist [genome1 genome2]
+  report mean (map [ [a b] -> abs (a - b)] genome1 genome2)
+end
+
+to k-means-color [set-color sh]
+  let variables k-means
+  foreach range (length variables)[ix ->
+     foreach (item ix variables) [per ->
+      ask per [set color ((ix + 1) * 10 + 5) set size 1 
+        if set-color = true[
+          
+          set family-color ((ix + 1) * 10 + 5) set size 1
+        ]
+        set shape sh
+      ]
+    ] 
+  ]
+  
+end
+
+
+
+
+to-report k-means-old-mu 
+  let l1 sort people
+  let l2 sort people
+  
+  let avg-dist 0
+
+  foreach range length l1[ ix ->
+    let g1 [genome] of item ix l1
+    let g2 [genome] of item ix l2
+    set avg-dist (avg-dist + (calculate-mean-sqr-dist g1 g2) / count people) 
+  ]
+  
+  let means []
+  foreach [genome] of people[ x ->
+    let flag1 true
+    if length means = k-means-param [
+     set flag1 false
+    ]
+    foreach means [ m ->
+      if (calculate-mean-sqr-dist x m) < avg-dist [
+        set flag1 false 
+      ]
+    ]
+    
+    if flag1[
+     set means (lput x means) 
+    ]
+    
+    
+  ] 
+  
+end
+
+to-report get-mu
+  ; choose a random point
+  let means (list ([genome] of one-of turtles))
+  foreach range (k-means-param - 1)[
+    let max-min-dist -1
+    let next-point 0
+    
+    foreach sort people[per ->
+      let dists []
+      foreach means[m ->
+        let dist calculate-mean-sqr-dist m ([genome] of per)
+        set dists (lput dist dists)
+      ]
+      let min-dist min dists
+      
+      if min-dist > max-min-dist[
+        set max-min-dist min-dist
+        set next-point per 
+      ]
+    ]
+    set means (lput ([genome] of next-point) means) 
+  ]
+  report means
+end
+
+to-report k-means
+  let means get-mu
+
+  let variables n-values k-means-param [[]]
+
+  
+  foreach (range 20)[
+    set variables n-values k-means-param [[]]
+
+    foreach sort people [ p ->
+      let min-dist-ix 0
+      let min-dist 100000
+      foreach range length means [ ix ->
+        let m item ix means
+        let dist calculate-mean-sqr-dist ([genome] of p) m
+        
+        if (dist) < min-dist[
+          set min-dist-ix ix
+          set min-dist dist
+        ]
+      ]
+
+      let temp-variab item min-dist-ix variables
+      set temp-variab (lput p temp-variab)
+      
+      set variables (replace-item min-dist-ix variables temp-variab )
+    ]
+    
+    foreach range k-means-param[ix ->
+      let this-arr (item ix variables)
+      
+      if not (length this-arr = 0)[
+
+        let new_m n-values (genome-length) [0]
+        foreach this-arr[ta ->
+          set new_m (map + new_m ([genome] of ta)) 
+        ]
+        set new_m (map [[a] -> a / (length this-arr)] new_m)
+        set means replace-item ix means new_m 
+      ]
+    ]
+  ]
+  report variables
+end
+
+

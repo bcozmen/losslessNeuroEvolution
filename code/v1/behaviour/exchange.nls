@@ -1,0 +1,120 @@
+
+to get-prices [set-trade-inventory]
+  ;Use the NN
+  let input (sentence (get-normalized-coordinates) (get-normalized-inventory) (get-normalized-needs) (get-normalized-season) get-normalized-age)
+  let output sigmoid (neural-activity 1 input)
+  
+  ;Process the output
+  
+  
+  set trade-willingness (item 0 output) * 0.6 + 0.2
+  if set-trade-inventory[ 
+    set trade-inventory (map [[a] -> trade-willingness] (inventory))
+  ]
+  ;set inventory (map - inventory trade-inventory)
+  
+  set prices sublist output 1 4
+  set prices (map [[a] -> (9 * a) + 1] prices)
+end
+
+to update-inventory
+  set trade-inventory n-values (length inventory) [0] 
+end
+
+to-report lose-utility [x swap-rate]
+  let a 0.5
+  let c 1.1
+  report  -1 * (1 / swap-rate) * c * (x ^ a)
+end
+to-report gain-utility [x]
+  let a 0.5
+  report x ^ a
+end
+to-report find-price [bsr ssr]
+  let c 1.1
+  report (((c / ssr) + 1) / (1 + (c / bsr)))  ^ (10 / 8)
+end
+
+to exchange
+  let market-turtles other turtles in-radius fog-radius
+  if count market-turtles = 0 [stop]
+  set market-turtles sort n-of (min (list market-size (count market-turtles))) market-turtles
+  
+
+  foreach market-turtles [seller ->
+    let b-prices prices
+    let b-inventory trade-inventory
+
+
+    let s-prices [prices] of seller
+    let s-inventory [trade-inventory] of seller
+
+
+    foreach range 3 [ i ->
+      foreach (range 3) [ j ->
+        if (item i b-inventory > 0) and (item j s-inventory > 0)[
+          get-prices false
+          ask seller [get-prices false]
+          let b-swap-rate (item j b-prices / item i b-prices)
+          let s-swap-rate (item j s-prices / item i s-prices)
+          
+          let amount-i find-price b-swap-rate s-swap-rate
+          let amount-j 1
+          
+          if (gain-utility 1) + (lose-utility amount-i b-swap-rate) > 0[            
+            let max-amount min (list (trade-willingness * item i b-inventory / amount-i) ([trade-willingness] of seller * item j s-inventory / amount-j))
+            set amount-i (amount-i * max-amount)
+            set amount-j (amount-j * max-amount)
+            
+            set-inventories seller amount-i amount-j i j
+            
+            set b-inventory trade-inventory
+            set s-inventory [trade-inventory] of seller
+          ]
+        ]
+      ]
+    ] 
+  ]
+end
+
+to set-inventories [seller amount-i amount-j i j]
+  set trade-per-capita (replace-item i trade-per-capita  (item i trade-per-capita  + amount-i) )
+  set trade-per-capita (replace-item j trade-per-capita  (item j trade-per-capita  + amount-j) )
+ 
+  set inventory (replace-item i inventory (item i inventory - amount-i) )
+  set inventory (replace-item j inventory (item j inventory + amount-j) )
+  
+  set trade-inventory (replace-item i trade-inventory (item i trade-inventory - amount-i) )
+  set trade-inventory (replace-item j trade-inventory (item j trade-inventory + amount-j) )
+  
+  set net-trade (replace-item i net-trade (item i net-trade - amount-i))
+  set net-trade (replace-item j net-trade (item j net-trade + amount-j))
+  
+  set net-trade-volume (replace-item i net-trade-volume (item i net-trade-volume + amount-i))
+  set net-trade-volume (replace-item j net-trade-volume (item j net-trade-volume + amount-j))
+  
+  ask seller[
+    set inventory (replace-item i inventory (item i inventory + amount-i) )
+    set inventory (replace-item j inventory (item j inventory - amount-j) )
+    
+    set trade-inventory (replace-item i trade-inventory (item i trade-inventory + amount-i) )
+    set trade-inventory (replace-item j trade-inventory (item j trade-inventory - amount-j) )
+    
+    set net-trade (replace-item i net-trade (item i net-trade + amount-i))
+    set net-trade (replace-item j net-trade (item j net-trade - amount-j))
+    
+    set net-trade-volume (replace-item i net-trade-volume (item i net-trade-volume + amount-i))
+    set net-trade-volume (replace-item j net-trade-volume (item j net-trade-volume + amount-j))
+  ]
+end
+
+
+to check-minus-inv [inp]
+ foreach sort people[p ->
+    if member? true map [[a] -> a < 0] [inventory] of p[
+      show [inventory] of p 
+      show inp
+      stop
+    ]
+  ] 
+end

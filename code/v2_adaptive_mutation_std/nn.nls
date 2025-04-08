@@ -1,0 +1,178 @@
+to-report neural-activity [act-index input]
+  let gene (cut-gene genome act-index)
+  let weights compute-weight-matrix gene (item act-index networks)
+  let output forward-pass input weights
+  report output
+end
+
+to-report compute-num-weights [layer-sizes]
+  let total 0
+  foreach range ((length layer-sizes) - 1)[layer ->
+    let input-dim ((item layer layer-sizes) + 1)
+    let output-dim ((item (layer + 1) layer-sizes))
+
+    set total (total + (input-dim * output-dim))
+  ]
+  report total
+
+end
+
+to show-shape [list-of-lists]
+  let num-rows length list-of-lists
+  let num-columns length (first list-of-lists)  ;; Assumes all sublists are of equal length
+  show (word "Shape: " num-rows " rows, " num-columns " columns")
+end
+
+to-report remove-last-column [matrix]
+  ;; Apply but-last to each row (sublist) of the matrix
+  let new-matrix map [row -> but-last row] matrix
+  report new-matrix
+end
+
+to-report flatten [matrix]
+  report reduce sentence matrix
+end
+
+
+to-report flatten-weights-to-plot [weig]
+  let this-weights []
+  foreach weig[a-network ->
+    foreach a-network[lay ->
+      let t-lay reduce sentence reduce sentence (remove-last-column lay)
+      set this-weights (sentence this-weights t-lay)
+    ]
+  ]
+  report this-weights
+end
+
+to-report flatten-weights [weig]
+  let this-weights []
+  foreach weig[a-network ->
+    foreach a-network[lay ->
+      let t-lay reduce sentence reduce sentence (lay)
+      set this-weights (sentence this-weights t-lay)
+    ]
+  ]
+  report this-weights
+  
+end
+
+to-report compute-weight-matrix [string layer-sizes]
+  let weights []
+  foreach range ((length layer-sizes) - 1)[layer ->
+    let input-dim ((item layer layer-sizes) + 1)
+    let output-dim ((item (layer + 1) layer-sizes))
+
+    let layer-weights (sublist string  0 (input-dim * output-dim))
+
+    set layer-weights (reshape layer-weights input-dim output-dim)
+
+    set string (sublist string  (input-dim * output-dim) (length string ))
+
+    set weights (lput layer-weights weights)
+
+  ]
+
+  report weights
+
+end
+
+to plot-weights [agentset pen-ix]
+  let weights [genome] of agentset
+
+  let produce-weights flatten-weights-to-plot (map [[ge] -> compute-weight-matrix (cut-gene ge 0) (item 0 networks) ] weights)
+  let exchange-weights flatten-weights-to-plot (map [[ge] -> compute-weight-matrix (cut-gene ge 1) (item 1 networks) ] weights)
+  let consume-weights flatten-weights-to-plot (map [[ge] -> compute-weight-matrix (cut-gene ge 2) (item 2 networks) ] weights)
+  let move-weights flatten-weights-to-plot (map [[ge] -> compute-weight-matrix (cut-gene ge 3) (item 3 networks) ] weights)
+
+  set-current-plot "produce-weights"
+  set-current-plot-pen pen-ix
+  histogram produce-weights
+
+  set-current-plot "consume-weights"
+  set-current-plot-pen pen-ix
+  histogram consume-weights
+
+  set-current-plot "exchange-weights"
+  set-current-plot-pen pen-ix
+  histogram exchange-weights
+
+  set-current-plot "move-weights"
+  set-current-plot-pen pen-ix
+  histogram move-weights
+
+end
+
+
+
+
+
+
+to-report reshape [flat-list input-dim output-dim]
+  ;; Reshape a flat list into a matrix with 'rows' rows and 'cols' columns
+  report n-values output-dim [ [i] -> sublist flat-list (i * input-dim) ((i + 1) * input-dim) ]
+end
+
+to-report forward-pass [inputs weights]
+  foreach range (length weights)[ layer ->
+   set inputs (lput 1 inputs)
+   set inputs (matrix-multiply (item layer weights) inputs)
+    if not (layer = (length weights - 1))[
+      (ifelse activation = 0[
+        set inputs relu inputs
+        ]
+        activation = 1[
+          set inputs sigmoid inputs
+        ]
+        activation = 2[
+          set inputs tanh inputs 
+        ]
+      )
+    ]
+  ]
+  report inputs                                    ;; Apply activation
+end
+
+to-report matrix-multiply [matrix vector]
+  ;; Assume 'matrix' is a list of lists, and 'vector' is a flat list
+  report map [row -> sum (map [[a b] -> a * b] row vector)] matrix
+end
+
+to-report sigmoid [vector]
+  report map [x -> sigmoid-f x] vector
+end
+
+to-report sigmoid-f [inp]
+  if inp < -10 [set inp -10]
+  report 1 / (1 + exp (-1 * inp))
+end
+
+to-report relu-f [x]
+  report ifelse-value (x > 0) [x] [0]
+end
+
+to-report relu [vector]
+  report map [x -> relu-f x] vector
+end
+
+to-report softmax [input-list]  ;; Takes a list of input values (logits)
+  let exp-values map [x -> exp x] input-list  ;; Compute the exponentials of each input value
+  let sum-exp (sum exp-values)  ;; Compute the sum of the exponentials
+  report map [x -> x / sum-exp] exp-values  ;; Normalize each exponentiated value
+end
+
+to-report arctanh [vector]
+  report map [x -> arctanh-f x] vector
+end
+
+to-report arctanh-f [x]
+  report 0.5 * ln ((1 + x) / (1 - x))
+end
+
+to-report tanh-f [x]
+  report 2 * (sigmoid-f x) - 1
+end
+
+to-report tanh [vector]
+  report map [x -> tanh-f x] vector
+end

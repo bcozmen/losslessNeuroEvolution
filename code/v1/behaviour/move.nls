@@ -1,0 +1,67 @@
+to move
+  ;use the NN
+  
+  pen-down
+  let input (sentence get-normalized-coordinates get-normalized-season get-crowd-info get-normalized-age)
+  let output sigmoid (neural-activity 3 input)
+  
+  ;process the output
+  let head heading + ((item 0 output) * 360)
+  let forw (item 1 output * 2)
+  
+  ;execute the command
+  
+  set heading head
+  fd forw
+  pen-up
+end
+
+
+to-report get-sectors
+  let dist (fog-radius / 2)
+
+  let this-xcor xcor
+  let this-ycor ycor
+  let this-sector patches with [
+   pxcor >= (this-xcor - dist) and pxcor <= (this-xcor + dist) and
+   pycor >= (this-ycor - dist) and pycor <= (this-ycor + dist)
+  ]
+
+  let upper-sector patches with [
+   pxcor >= (this-xcor - dist) and pxcor <= (this-xcor + dist) and
+   pycor > (this-ycor + dist) and pycor <= (this-ycor + 3 * dist)
+  ]
+
+  let lower-sector patches with [
+   pxcor >= (this-xcor - dist) and pxcor <= (this-xcor + dist) and
+   pycor < (this-ycor - dist) and pycor >= (this-ycor - 3 * dist)
+  ]
+
+  let right-sector patches with [
+   pxcor > (this-xcor + dist) and pxcor <= (this-xcor + 3 * dist) and
+   pycor >= (this-ycor - dist) and pycor <= (this-ycor + dist)
+  ]
+
+  let left-sector patches with [
+   pxcor < (this-xcor - dist) and pxcor >= (this-xcor - 3 * dist) and
+   pycor >= (this-ycor - dist) and pycor <= (this-ycor + dist)
+  ]
+
+  report (list this-sector upper-sector right-sector lower-sector left-sector)
+
+end
+
+to-report get-crowd-info
+  let sectors get-sectors
+
+  let signal []
+  foreach sectors [i ->
+    if (sum [count turtles-here] of i = 0)[ set signal (lput 0 signal)]
+    if  not(sum [count turtles-here] of i = 0)[
+      let mean-turtles mean [count turtles-here] of i
+      set signal (lput mean-turtles signal)
+    ]
+  ]
+  report signal
+
+end

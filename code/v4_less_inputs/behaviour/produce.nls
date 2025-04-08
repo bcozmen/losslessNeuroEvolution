@@ -1,0 +1,68 @@
+to calculate-produce-rate
+  let output softmax (decide 0)
+  
+
+  let p-tv-dist max ((map [[a] -> (3 / 2) * (abs (a - (1 / 3)))] output))
+  set p-tv-dist (p-tv-dist) 
+
+
+  let health mean (map [ [a b c] -> ((a - b) / (c - b)) + 0.5] needs min-needs max-needs)
+  
+  set health (p-tv-dist  + 0.5) * health * (tv-dist + 0.5)
+  
+  let efficiency health
+  if count (turtles in-radius 2) - count (turtles in-radius 1) > 1[
+    set efficiency (efficiency * 0.9)
+  ]
+  if count (turtles in-radius 1) > 1[
+    set efficiency (efficiency * 0.7)
+  ] 
+  
+    
+  let elev-efficiency (calculate-elev-efficiency [elevation] of patch-here)
+  let season-efficiency (map [x -> (item season x)] season-efficiency-table)
+
+  set produce-rate (map [[o s el ] ->  o * s * el * efficiency ] output season-efficiency elev-efficiency)
+
+  
+  let p-rate produce-rate
+  ask patch-here[
+    set total-production-wish (map + (total-production-wish) p-rate)
+  ]
+
+end
+
+to produce
+  let actual-prod (map [[a b mx] -> a * mx * (a / b)] produce-rate ([total-production-wish] of patch-here) max-product)
+  set inventory (map + inventory actual-prod)
+  set production-per-capita (map + production-per-capita actual-prod)
+  set net-produce actual-prod
+end
+
+
+
+to draw-pr-gaussian
+  set-current-plot "pr-gaussian"
+  clear-plot
+  foreach (range 25)[ ix ->
+    let x (ix)
+    let dists calculate-elev-efficiency x
+    
+    foreach range (length dists)[jx ->
+      set-current-plot-pen (word jx)
+      plot item jx dists
+      
+    ]
+  ]
+  
+end
+to-report gaussian [mu sigma x]
+  report e ^ ((- ((x - mu) ^ 2)) / (2 * (sigma ^ 2)) )
+end
+to-report calculate-elev-efficiency [elev]
+  let a pr-gaussian-a
+  let b pr-gaussian-b
+  set elev (elev / max-pxcor)
+
+  report (list (gaussian 0 b elev) (gaussian 0.5 a elev) (gaussian 1 b elev))
+end

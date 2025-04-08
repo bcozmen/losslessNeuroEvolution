@@ -1,0 +1,55 @@
+to-report scale-f [x]
+  report x * 2 - 1
+end
+
+to-report scale [x]
+  report (map [[a] -> a * 2 - 1] x)
+end
+
+to-report get-normalized-age
+  report (age / max-age)
+end
+to-report get-normalized-coordinates
+  report list  (xcor / max-pxcor) (ycor / max-pycor) 
+end
+to-report get-normalized-inventory
+  report (map [[a b] -> a / b] inventory max-inventory)
+end
+to-report get-normalized-needs
+  report (map [[a b] -> a / b] needs max-needs)
+end
+to-report get-normalized-season
+  report (season / 3)
+end
+
+to-report get-normalized-trade
+  report trade-count / market-size 
+end
+
+to-report decide [ix]
+  let input get-inputs ix
+  
+  let output neural-activity ix input
+
+  report output
+end
+
+to-report get-inputs [ix]
+  let input []
+  (ifelse ix = 0[
+    set input (sentence get-normalized-coordinates get-normalized-season get-normalized-age)
+    ]
+    ix = 1[
+      set input (sentence get-normalized-coordinates get-normalized-season get-normalized-inventory get-normalized-trade get-normalized-age)
+    ]
+    ix = 2[
+      set input (sentence get-normalized-season get-normalized-inventory get-normalized-needs get-normalized-age)
+    ]
+    ix = 3[
+      set input (sentence get-normalized-coordinates get-normalized-season get-normalized-age ((count turtles-here) / 10))
+    ]
+  )
+  
+
+  report input
+end

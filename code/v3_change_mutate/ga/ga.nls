@@ -1,0 +1,219 @@
+to evaluate-survival
+  if age > max-age[
+    set death-by-age (death-by-age + 1)
+    set death-age (lput age death-age)
+    ;redistribute
+    die
+  ]
+  ;Check if all needs are satisfied (element-wise)
+
+  let bool-list (map [[a b] -> a >= b] needs min-needs)
+  if (member? false (sublist bool-list 0 2 ))[
+    set death-by-starvation (death-by-starvation + 1)
+    set death-age (lput age death-age)
+    die
+  ]
+  
+  
+end
+
+to check-reproduce
+  ;Check if inventory consist bigger numbers than start-inventory (element-wise)
+  let bool-list (map [[a b] -> a > 1.95 * b ] needs start-needs)
+  ;set reproduce? true if all the elements of bool-list are true
+  set reproduce? not (member? false (sublist bool-list 0 2 ))
+
+  if age < fertility-start or age > fertility-end [set reproduce? false]
+  set reproduce? (reproduce?)
+end
+
+to mate
+  ;let candidates n-of (count turtles with [reproduce?]) turtles with [reproduce?]
+  ;let candidates (sort-by [ [t1 t2] -> [sum needs] of t1 > [sum needs] of t2] (turtles with [reproduce?]))
+  ;let partner sort-by [ [a b] -> [sum needs] of a > [sum needs] of b] (other turtles with [reproduce?] in-radius fog-radius)
+  check-reproduce
+  if not reproduce? [stop]
+  let partner (other turtles with [reproduce?] in-radius fog-radius)
+  set partner sort-by [ [a b] ->
+    [charm] of a > [charm] of b
+  ] partner
+
+  if length partner = 0 [stop]
+  set partner first partner
+  ;set candidates (sublist candidates 0 (length candidates / 4))
+  set color family-color
+  ask partner[
+    set color family-color 
+  ]
+  reproduce self partner
+
+end
+
+to reproduce-set [parents]
+  set parents sort parents
+  let parent1 item 0 parents
+  let parent2 item 1 parents
+  
+  ask parent1[
+    set needs (map - needs min-needs)
+    set needs (replace-item 2 needs (max list 0 (item 2 needs)))
+    set did-reproduce? true
+  ]
+  ask parent2[
+    set needs (map - needs min-needs)
+    set needs (replace-item 2 needs (max list 0 (item 2 needs)))
+    set did-reproduce? true
+  ]
+  reproduce parent1 parent2
+  reproduce parent1 parent2
+end
+
+to reproduce [parent1 parent2]
+  let genome1 [genome] of parent1
+  let genome2 [genome] of parent2
+  
+  let genome-mut1 [genome-mut] of parent1
+  let genome-mut2 [genome-mut] of parent2
+  
+  ifelse crossover?[
+    let child-genome crossover genome1 genome-mut1 genome2 genome-mut2
+    conceive (item 0 child-genome) (item 1 child-genome) parent1 parent2
+    
+    set child-genome crossover genome1 genome-mut1 genome2 genome-mut2
+    conceive (item 0 child-genome) (item 1 child-genome) parent1 parent2
+  ][
+
+    conceive ([genome] of parent1) ([genome-mut] of parent1) parent1 parent1
+    conceive ([genome] of parent2) ([genome-mut] of parent2) parent2 parent2
+  ]
+  ask parent1[
+    set needs (map - needs start-needs)
+    set needs (replace-item 2 needs (max list 0 (item 2 needs)))
+    check-reproduce
+    set number-of-childeren (number-of-childeren + 2)
+    set did-reproduce? true
+  ]
+  ask parent2[
+    set needs (map - needs start-needs)
+    set needs (replace-item 2 needs (max list 0 (item 2 needs)))
+    check-reproduce
+    set number-of-childeren (number-of-childeren + 2)
+    set did-reproduce? true
+  ]
+end
+
+to-report crossover [genome1 genome-mut1 genome2 genome-mut2]
+  let child-genome []
+  let child-genome-mut []
+  foreach [0 1 2 3][i ->
+    let gene []
+    let gene-mut []
+    (ifelse (random-float 1 < 0.5)[
+      set gene (cut-gene genome1 i)
+      set gene-mut (cut-gene genome-mut1 i)
+    ][
+      set gene (cut-gene genome2 i)
+      set gene-mut (cut-gene genome-mut2 i)
+    ])
+    
+    set child-genome (sentence child-genome gene)
+    set child-genome-mut (sentence child-genome-mut gene-mut)
+  ]
+    
+  report (list child-genome child-genome-mut) 
+end
+
+to-report crossover-old [genome1 genome2]
+  let child-genome []
+  
+  foreach [0 1 2 3][i ->
+
+    let gene1 (cut-gene genome1 i)
+    let gene2 (cut-gene genome2 i)
+    let weights1 compute-weight-matrix gene1 (item i networks)
+    let weights2 compute-weight-matrix gene2 (item i networks)
+    
+    let layer (random (length network-layers) + 1)
+    
+    let neuron 0
+    if layer < length network-layers[
+      set neuron random item layer network-layers 
+    ]
+    if layer = length network-layers[
+     set neuron random item i output-lengths  
+    ]
+        
+    let layer1 item layer weights1
+    let layer2 item layer weights2
+    
+    let row-layer1 item neuron layer1
+    let row-layer2 item neuron layer2
+    
+    set layer1 replace-item neuron layer1 row-layer2
+    set layer2 replace-item neuron layer2 row-layer1
+    
+    set weights1 replace-item layer weights1 layer1
+    set weights2 replace-item layer weights2 layer2
+
+    
+    set gene1 flatten-weights weights1
+    set gene2 flatten-weights weights2
+    
+    set child-genome (sentence child-genome (one-of list gene1 gene2))
+  ]
+  report child-genome
+end
+
+
+to conceive [child-genome child-genome-mut parent1 parent2]
+  ask one-of list parent1 parent2 [
+    let child-inventory n-values (length inventory) [0]
+    if inherit?[
+      set child-inventory (map [[a] -> a * inheritence] inventory)
+      set inventory (map - inventory child-inventory)
+    ]
+    hatch 1[
+      set new-borns (new-borns + 1)
+      let xcort (xcor + (random fog-radius) - fog-radius / 2)
+      set xcort (min list xcort max-pxcor)
+      set xcor (max list xcort min-pxcor)
+      
+      let ycort  (ycor + (random fog-radius) - fog-radius / 2)
+      set ycort (min list ycort max-pycor)
+      set ycor (max list ycort min-pycor)
+      
+      set age 0
+      set genome child-genome
+      set genome-mut child-genome-mut
+      
+      set mutated? 0
+      
+      if mutate? and ((random-float 1) < mutation-chance)[
+        mutate
+      ]
+      set color child-color parent1 parent2
+      
+      
+      set-people-variables
+      set needs start-needs
+      set inventory child-inventory
+    ]
+  ]
+end
+
+to mutate
+  let n random-poisson 0.5 + 1
+  foreach range n[
+    let index random (length genome)
+    let rand ((random-float 1) + 0.5)
+    let sign ((random 2) * 2 - 1)
+    set genome (replace-item index genome (item index genome * rand * sign))
+    
+    let flag? true
+    foreach range 4 [ix ->
+      if item (ix) gene-points < index and item (ix + 1) gene-points > index[
+        set mutated? (ix + 1)
+      ]
+    ]
+  ]
+end

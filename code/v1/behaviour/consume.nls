@@ -1,0 +1,91 @@
+to show-consume-rate
+  let input (sentence get-normalized-coordinates get-normalized-inventory get-normalized-needs get-normalized-season get-normalized-age)
+  let output (neural-activity 2 input)
+  show sigmoid-f item 0 output
+  show softmax (sublist output 1 4)
+end
+
+to consume
+  let input (sentence get-normalized-coordinates get-normalized-inventory get-normalized-needs get-normalized-season get-normalized-age)
+
+  let output (neural-activity 2 input)
+
+
+  ;first bit shows how many calories
+  ;other bits are the proportions
+  let target-nutrition sigmoid-f (item 0 output)
+  ;Calculate it in terms of max-needs units
+  set target-nutrition (map [[x] -> x * target-nutrition * 4] min-needs)
+
+  ;create consume loop
+  let consumed-nutritions [0 0 0]
+  let consumed-goods [0 0 0]
+
+  ;normalize the last 3 bits
+  let proportions softmax (sublist output 1 4)
+
+
+  ;while we haven't eaten enough
+
+  let counter 0
+  let flag false
+  loop  [
+    set counter (counter + 1)
+    if counter > 50 [set flag true]
+    ;check if consumed amount is more than the amount we targeted (element-wise)
+    if (not (member? false (map [[x y] -> x >= y] consumed-nutritions target-nutrition))) [set flag true]
+    ;check if inventory is empty
+    if not (member? false (map [[x] -> x = 0] inventory))[set flag true]
+
+    if flag[
+      set needs (map - needs min-needs)
+      set needs (map + needs consumed-nutritions)
+
+      ;spend needs
+      
+      set needs (map [ [a b] -> min list a b] needs max-needs)
+      
+      set net-consume consumed-goods
+      if not ( (sum consumed-goods) = 0)[
+      set consumed-goods (map[[a] -> a / (sum consumed-goods)] consumed-goods )
+      ]
+      set tv-dist max ((map [[a] -> (3 / 2) * (abs (a - (1 / 3)))] consumed-goods))
+      set tv-dist (1 - tv-dist)
+      
+      
+      let need-dist min (map [[a b c] -> (a - c) / (b - c)] needs max-needs start-needs)
+      set charm tv-dist * (1 / 4) + need-dist * (3 / 4) 
+      stop
+    ]
+
+    ;get min(proportion, inventory) amount of each object
+    let actual-consume (map [ [a b] -> min (list a b) ] proportions inventory)
+    ;make sure its min 0
+    set actual-consume (map [ [a] -> max (list a 0)] actual-consume)
+    ;subtract them from the inventory
+    set inventory (map - inventory actual-consume)
+    set consume-per-capita (map + consume-per-capita actual-consume)
+    set consumed-goods (map + consumed-goods actual-consume)
+    ;calculate their nutrition values
+    let nutritions (calculate-nutrition actual-consume)
+    ;consume them
+    set consumed-nutritions (map + consumed-nutritions nutritions)
+  ]
+  ;add to our needs
+
+
+end
+
+to-report calculate-nutrition [actual-consume]
+  let nutritions n-values (length min-needs) [0]
+  foreach  n-values (length actual-consume) [i -> i] [i ->
+    let consumed-item (item i actual-consume)
+    let nutrition-values (item i good_table)
+
+    set nutrition-values map [x -> x * consumed-item] nutrition-values
+    set nutritions (map + nutritions nutrition-values)
+    ]
+
+  report nutritions
+end
+

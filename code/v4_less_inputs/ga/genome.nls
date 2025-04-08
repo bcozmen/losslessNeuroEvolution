@@ -1,0 +1,83 @@
+to calculate-gene-points
+  let sizes []
+  foreach range length input-lengths[i ->
+    let in item i input-lengths
+    let out item i output-lengths
+    let this-size compute-num-weights (sentence (list in ) network-layers (list out))
+    set sizes lput this-size sizes
+  ]
+
+  let cumsum 0
+  set gene-points [0]
+  foreach sizes[ [val]->
+    set cumsum (cumsum + val)
+    set gene-points lput cumsum gene-points
+  ]
+
+  set genome-length cumsum
+end
+
+to set-genome-basics
+  ;-a to a gene
+  set maximum-gene-bit 2
+
+  set input-lengths [2 3 5 4]
+  set output-lengths [3 6 3 2]
+  set network-layers [12 8]
+
+  set networks (map [[a b] -> (sentence a network-layers b)] input-lengths output-lengths)
+
+  calculate-gene-points
+
+end
+
+to new-genome
+  set genome []
+  set genome-mut []
+  
+  
+  foreach networks[net ->
+    let gene []
+    let gene-mut []
+    
+    foreach range (length net - 1)[l-ix ->
+      let inp item l-ix net
+      let out item (l-ix + 1) net 
+      
+      let std 1
+      (ifelse hidden-activation = 1 or hidden-activation = 2[
+        set std (1 / (inp + out))
+      ]
+      hidden-activation = 0 [
+       set std (2 / inp) 
+      ])
+      
+            
+      foreach range ((inp + 1) * out)[ix ->
+        if ix != inp[
+          set gene (lput (random-normal 0 std) gene)
+        ]
+        if ix = inp[
+          set gene (lput 0 gene)
+        ]
+        set gene-mut (lput (std / 10) gene-mut)
+      ]
+    ]
+    set genome (sentence genome gene)
+    set genome-mut (sentence genome-mut gene-mut)
+  ]
+  
+  ;let a-genome []
+  ;repeat size-of [set a-genome (lput ((random-float (2 * maximum-gene-bit)) - (maximum-gene-bit)) a-genome)]
+end
+
+to-report cut-gene [gene-list index]
+  ;0 for produce
+  ;1 for exchange
+  ;2 for consume
+  ;3 for move
+  let start-index (item index gene-points)
+  let end-index (item (index + 1) gene-points)
+  report (sublist gene-list start-index end-index)
+end
+

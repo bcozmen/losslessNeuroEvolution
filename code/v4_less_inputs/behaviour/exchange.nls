@@ -1,0 +1,109 @@
+
+to get-prices
+  ;Use the NN
+  let output (decide 1)
+  
+  ;Process the output
+  
+  set trade-wish (sublist output 0 3)
+  
+  set trade-wish-plot trade-wish
+  ;set trade-wish (map * trade-wish inventory)
+  
+  set trade-wish (map [[tw i] -> ifelse-value tw < 0 [-1 * min (list (abs tw) i)] [tw] ] trade-wish inventory)
+  
+  set prices  map [[a] -> a + 1] relu (sublist output 3 6)
+  ;set prices (map [[a] -> (9 * a) + 1] prices)
+  
+end
+
+
+to shop [market-ij i j]
+  let b-trade-wish trade-wish
+  let b-exchange-rate (item j prices / item i prices)
+  
+  foreach market-ij[ s ->
+    if (item i b-trade-wish) >= -0.0001[
+     stop 
+    ]
+    
+    
+    
+    let s-trade-wish [trade-wish] of s
+    let s-exchange-rate (item j [prices] of s / item i [prices] of s )
+    
+    let exchange-rate mean (list b-exchange-rate s-exchange-rate)
+    
+    
+    let i-amount min list (abs (item i b-trade-wish)) (abs (item j s-trade-wish) * exchange-rate )
+    let j-amount (i-amount / exchange-rate)
+    
+    set-inventories j-amount i-amount j i 
+    set b-trade-wish trade-wish
+    set utility (utility + (j-amount * (item j prices)) - (i-amount * (item i prices)))
+    
+    ask s[
+      set-inventories i-amount j-amount i j 
+      set s-trade-wish trade-wish
+      set utility (utility + (i-amount * (item i prices)) - (j-amount * (item j prices)))
+    ]
+    
+  ]
+end
+
+
+
+to set-inventories [buy sell buy-ix sell-ix]
+  set trade-per-capita (replace-item buy-ix trade-per-capita  (item buy-ix trade-per-capita  + buy) )
+  set trade-per-capita (replace-item sell-ix trade-per-capita  (item sell-ix trade-per-capita  + sell) )
+
+  set inventory (replace-item buy-ix inventory (item buy-ix inventory + buy))
+  set inventory (replace-item sell-ix inventory (item sell-ix inventory - sell))
+  
+  set inventory (map [[a] -> max (list 0 a)] inventory)
+  
+  set trade-wish (replace-item buy-ix trade-wish (item buy-ix trade-wish - buy) )
+  set trade-wish (replace-item sell-ix trade-wish (item sell-ix trade-wish + sell) )
+  
+  set net-trade (replace-item buy-ix net-trade (item buy-ix net-trade + buy))
+  set net-trade (replace-item sell-ix net-trade (item sell-ix net-trade - sell))
+  
+  set net-trade-volume (replace-item buy-ix net-trade-volume (item buy-ix net-trade-volume + buy))
+  set net-trade-volume (replace-item sell-ix net-trade-volume (item sell-ix net-trade-volume + sell))
+end
+
+
+to exchange
+  let market-turtles other turtles in-radius fog-radius
+  if count market-turtles = 0 [stop]
+  
+  foreach shuffle (range 3)[i ->
+    foreach shuffle (range 3)[j ->
+      if (item i trade-wish < 0) and (item j trade-wish > 0)[
+        ;i per j        
+        let b-exchange-rate (item j prices / item i prices)
+        
+        
+        let market-ij market-turtles with [(item i trade-wish > 0) and (item j trade-wish < 0)]
+        set market-ij market-ij with [ ((item j prices) / (item i prices)) < b-exchange-rate ]
+        set market-ij sort-by [[t1 t2] -> ((item j [prices] of t1) / (item i [prices] of t1)) <  ((item j [prices] of t2) / (item i [prices] of t2)) ] market-ij
+        shop market-ij i j
+      ] 
+    ] 
+  ]
+end
+
+
+
+
+
+
+to check-minus-inv 
+ foreach sort people[p ->
+    if member? true map [[a] -> a < 0] [inventory] of p[
+      show [inventory] of p
+      show "MINUS"
+      stop
+    ]
+  ] 
+end

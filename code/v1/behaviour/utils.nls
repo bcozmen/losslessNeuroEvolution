@@ -1,0 +1,15 @@
+to-report get-normalized-age
+  report ((2 * age / max-age) - 1)
+end
+to-report get-normalized-coordinates
+  report list (((xcor / max-pxcor) * 2) - 1) (((ycor / max-pycor) * 2) - 1)
+end
+to-report get-normalized-inventory
+  report (map [[a b] -> ((a / b) * 2) - 1] inventory max-inventory)
+end
+to-report get-normalized-needs
+  report (map [[a b] -> (2 * (a / b)) - 1] needs max-needs)
+end
+to-report get-normalized-season
+  report (2 * season / 3) - 1
+end
