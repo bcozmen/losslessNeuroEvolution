@@ -1,4 +1,4 @@
-#Lossless Neuro Evolution
+# Lossless Neuro Evolution
 
 The following is an ontological discussion about models of knowledge. For the actual work please refer to **Oezmen_ABM_final_report.pdf** 
 
