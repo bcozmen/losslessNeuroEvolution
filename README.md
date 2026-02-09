@@ -44,7 +44,7 @@ We have observed that, having a luxury good, that doesn't effect survability dir
 - It acts as money in transaction. It's observed in many runs, that the luxury good is priced as 1.
 - Agents cannot be too conservative. Even if they can survive by their own production, the agents taking the extra step for luxury goods get advantegous in the long run, dominating the population
 
-![Image showing pricing of an individual for different goods in different trade cycles](price.png)
+![Image showing pricing of an individual for different goods in different trade cycles](assets/price.png)
 
 
 ### Population Genetics
@@ -68,4 +68,16 @@ There are two important rules to remember:
     - Usually genetically more diverse, since they tend to contain individuals with different trading and production strategies
     - Less stable, since distruptions can break whole trade networks, leaving individuals ill-adapted to the new environment
 
+
+![Image showing k-means clustering of genomes of agents](assets/kmeans.png)
+
 ### Trade Cycles
+
+Through evolutionary pressure and luxury goods, we observe that societies that can coordinate emerges. This is not, in the classical term, optimizing a neural network, since the success of this neural network depends on the diversity and decisions of many other neural networks, in the following examples a whole society. 
+
+We show an example of trade cycles happening. In each graph, agents are represented as humans, and goods are represented as colors, where R = "Fish", G = "Wheat - Luxary good", B = "Meat".
+
+![Image showing production of agents](assets/p1.png)
+![Image showing buy orders of agents in winter](assets/nt2.png)
+![Image showing buy orders of agents in summer](assets/nt4.png)
+![Image showing consumption of agents](assets/c3.png)
