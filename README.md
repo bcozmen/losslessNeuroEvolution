@@ -95,6 +95,8 @@ Population types:
   - More successful long-term  
   - Fragile to trade network disruptions  
 
+- K-means clustering of agent genomes
+  
 ![K-means clustering of agent genomes](assets/kmeans.png)
 
 ---
@@ -121,12 +123,3 @@ Example visualizations:
 - **Individual trade strategy by season:**  
 
 ![Trade wish of an individual by season and trade cycle](assets/trade-wish.png)
-
----
-
-## Key Takeaways
-
-- Prices and trade networks can emerge **without explicit objectives or rewards**  
-- Gradual environmental pressure stabilizes evolutionary dynamics  
-- Luxury goods drive **risk-taking, coordination, and monetary-like behavior**  
-- Social and economic structures arise from **local interactions**, not centralized rules
