@@ -1,83 +1,132 @@
-# Agent Based Modelling : Price Determination with Evolutionary Strategies
+# Agent-Based Modelling: Price Determination with Evolutionary Strategies
 
-This model attemts to create and simulate a basic production-consumption-trade cycle consisting of agents, capable of evolving feed-forward neural networks.
+This model attempts to create and simulate a basic **production–consumption–trade cycle** consisting of agents capable of evolving feed-forward neural networks.
 
-For detailed explanation and the report please refer to **Oezmen_ABM_final_report.pdf**
+For a detailed explanation, please refer to **Oezmen_ABM_final_report.pdf**.
+
+---
 
 ## Setup
 
-Each agent is represented by a genome of 4 genes, where each represents the weights of a neural network that encodes production, consumption, trade and movement strategies. Each agent is also represented by set of rules, that decides their survival and movements and internal states like energy age etc.
+Each agent is represented by a **genome of 4 genes**, each encoding the weights of a neural network that governs:
 
-The environment is a basic setup of 3 goods, that satisfies 3 different needs on different level, where 2 of the needs are being connected to survival and a 3rd luxary need. The ability to produce these good are related to spatial (location) and temporal (seasons)
+- Production strategy  
+- Consumption strategy  
+- Trade strategy  
+- Movement strategy  
 
-The basic cycle goes like
+Agents also have **internal states** (energy, age, inventory, reputation, charm) and follow **rule-based constraints** that govern survival, reproduction, and movement.
 
-- Produce
-- Consume
-- Exchange
-- Move
-- Mate 
-- Evaluate Survival - Die
+The environment contains **three goods**, each satisfying a different level of need:
 
-where, each agent can decide on production, consumption, exchange and move strategies. 
+- **Fish** – survival-critical  
+- **Meat** – survival-critical  
+- **Wheat** – luxury good  
+
+Production depends on **spatial location** and **seasonal availability**.
+
+### Simulation Cycle
+
+Each tick of the simulation follows this order:
+
+1. Produce  
+2. Consume  
+3. Exchange (Trade)  
+4. Move  
+5. Mate  
+6. Evaluate Survival  
+7. Age or Die  
+
+Agents decide production, consumption, exchange, and movement using their neural networks.
+
+---
 
 ## Results
 
-Since we don't really have an explicit goal given with rewards that defines the objectives we would like the agents to achieve, and evaluate them based on survival, only objective evaluation criteria is if there are a group of surviving induviduals creating a stable or drifting but stable enough system. 
+Since there is **no explicit reward function**, the only evaluation criterion is survival. Both of the following are considered valid outcomes:
 
-Thus for evaluation, a single individual basically producing enough to survive forms a valid stable surviving group as well as a complex trading network. 
+- A single self-sufficient agent forming a stable system  
+- A complex multi-agent trade network  
 
-Thus, we evaluate the dynamics of this stable non stable systems and come up with strategies that drive evolution
+Evaluation focuses on **emergent dynamics**, rather than predefined objectives.
 
-#### Evolutionary Pressure
+### Evolutionary Pressure
 
-Since we have classified our systems into stable and unstable systems, one of the first problem in random search, is how to reach a stable system
+Random initialization often produces unstable populations. To guide evolution, we use a **nutrition multiplier**, which scales the value of consumed goods:
 
-One strategy for this is, creating random new indiduals at the beginning, until we get a group of individuals that can survive. However this can take a long time
+- Start with a high multiplier → survival is easy, self-sufficiency is possible  
+- Gradually decrease multiplier → survival becomes harder, trade becomes necessary  
 
-One strategy we have observed to be working, is parametrizing the evolutionary pressure, by a variable for nutrition multiplyer that effects the value an agent would get from consuming a good (nutrition multiplyer x base nutrition). Starting with a high value (easy survival, don't even depend on trade, can sustain with own production), and gradually decreasing the value (harder survival, impossible to sustain itself by production), gives time for the individuals to stabilize and start trading, while increase in the pressure slowly kills the unsuccesfull individual driving the evolution
+This creates **gradually increasing environmental pressure**, allowing strategies to stabilize before being tested under harsher conditions.
+
+---
 
 ### Luxury Goods
 
-We have observed that, having a luxury good, that doesn't effect survability directly, but increases the chance of mating, is very important. It has 2 important contributions:
+Luxury goods, like wheat, **do not affect survival directly** but increase mating probability. Their effects include:
 
-- It acts as money in transaction. It's observed in many runs, that the luxury good is priced as 1.
-- Agents cannot be too conservative. Even if they can survive by their own production, the agents taking the extra step for luxury goods get advantegous in the long run, dominating the population
+- Acting as a **medium of exchange**, often stabilizing at a price of 1  
+- Encouraging **risk-taking**, allowing agents that pursue luxury to dominate long-term  
 
-![Image showing pricing of an individual for different goods in different trade cycles](assets/price.png)
+![Pricing of an individual for different goods across trade cycles](assets/price.png)
 
+---
 
 ### Population Genetics
 
-We have observed, even if we start with random genomes, we end up with one or multiple (2-3) different populations. This is heavily affected by spatial location and trade dynamics. Once a population stabilizes and starts to grow then we see multiple strategies
+Starting from random genomes, the population often splits into **1–3 distinct clusters**, influenced by spatial separation and trade.  
 
-There are two important rules to remember:
+Rules to remember:
 
-- You can only grow a product in dedicated regions and your production strategy is affected by your genes
-- If you are close to trade, you are also close enough to mate, thus trading strategies has to come with genetic diffusion
+1. Production is regionally constrained and affected by genes  
+2. Trade proximity also facilitates mating, driving genetic diffusion  
 
-  
+Population types:
 
-- Conservatives
-    - Do not trade
-    - Individuals with novel strategies cannot survive so they are driven to a genetic diversity collapse
-    - Usually expands until encountering another society, survival depends on how do they compete
+- **Conservatives:**  
+  - Minimal or no trade  
+  - Low genetic diversity  
+  - Resistant to innovation  
+  - Survival depends on competition with other societies  
 
-- Traders
-    - Tends to be the most succesfull group
-    - Usually genetically more diverse, since they tend to contain individuals with different trading and production strategies
-    - Less stable, since distruptions can break whole trade networks, leaving individuals ill-adapted to the new environment
+- **Traders:**  
+  - Genetically diverse  
+  - Interdependent through trade  
+  - More successful long-term  
+  - Fragile to trade network disruptions  
 
+![K-means clustering of agent genomes](assets/kmeans.png)
 
-![Image showing k-means clustering of genomes of agents](assets/kmeans.png)
+---
 
 ### Trade Cycles
 
-Through evolutionary pressure and luxury goods, we observe that societies that can coordinate emerges. This is not, in the classical term, optimizing a neural network, since the success of this neural network depends on the diversity and decisions of many other neural networks, in the following examples a whole society. 
+Societies capable of coordination **emerge naturally** through evolutionary pressure and luxury goods. This is **not classical neural network optimization**, as success depends on **interactions with other agents**.  
 
-We show an example of trade cycles happening. In each graph, agents are represented as humans, and goods are represented as colors, where R = "Fish", G = "Wheat - Luxary good", B = "Meat".
+Example visualizations:
 
-![Image showing production of agents](assets/p1.png)
-![Image showing buy orders of agents in winter](assets/nt2.png)
-![Image showing buy orders of agents in summer](assets/nt4.png)
-![Image showing consumption of agents](assets/c3.png)
+- **Production:** Split into 3 regions (Fish-left, Meat-right, Wheat-seasonal)  
+
+![Production of agents](assets/p1.png)
+
+- **Consumption:** More uniform due to trade  
+
+![Consumption of agents](assets/c3.png)
+
+- **Trade buy orders:** Cyclic behavior transfers Fish → right, Meat → left  
+
+![Buy orders in winter](assets/nt2.png)  
+![Buy orders in summer](assets/nt4.png)  
+
+- **Individual trade strategy by season:**  
+
+![Trade wish of an individual by season and trade cycle](assets/trade-wish.png)
+
+---
+
+## Key Takeaways
+
+- Prices and trade networks can emerge **without explicit objectives or rewards**  
+- Gradual environmental pressure stabilizes evolutionary dynamics  
+- Luxury goods drive **risk-taking, coordination, and monetary-like behavior**  
+- Social and economic structures arise from **local interactions**, not centralized rules
