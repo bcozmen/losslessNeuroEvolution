@@ -87,13 +87,15 @@ Population types:
   - Minimal or no trade  
   - Low genetic diversity  
   - Resistant to innovation  
-  - Survival depends on competition with other societies  
+  - Survival depends on competition with other societies
+  - Very low adaptability   
 
 - **Traders:**  
   - Genetically diverse  
   - Interdependent through trade  
   - More successful long-term  
-  - Fragile to trade network disruptions  
+  - Fragile to trade network disruptions with catastropic consequences with fast changes
+  - But more adaptable  
 
 - K-means clustering of agent genomes
   
