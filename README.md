@@ -4,6 +4,8 @@ This model attemts to create and simulate a basic production-consumption-trade c
 
 For detailed explanation and the report please refer to **Oezmen_ABM_final_report.pdf**
 
+For GPU based simulation framework implementation in python basics see **vecEnv**
+
 ## Setup
 
 Each agent is represented by a genome of 4 genes, where each represents the weights of a neural network that encodes production, consumption, trade and movement strategies. Each agent is also represented by set of rules, that decides their survival and movements and internal states like energy age etc.
